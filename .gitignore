@@ -4,3 +4,6 @@
 **.sqlite*
 
 oracle_venv/
+
+# Environment setting
+oracle/.env
