@@ -33,5 +33,9 @@ before_script:
   - pep8 --exclude=migrations --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
   - flake8 --exclude=migrations,settings,__init__.py --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
 script:
+  - mkdir log
+  - cd log
+  - touch django.log
+  - cd ..
   - cd ./oracle
   - ./manage.py test
