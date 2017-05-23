@@ -37,4 +37,5 @@ before_script:
   - touch django.log
   - cd ..
 script:
-  - ./oracle/manage.py test
+  - cd ./oracle
+  - ./manage.py test
