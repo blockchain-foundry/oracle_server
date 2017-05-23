@@ -33,5 +33,5 @@ before_script:
   - pep8 --exclude=migrations --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
   - flake8 --exclude=migrations,settings,__init__.py --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
 script:
-  - cd ../oracle
+  - cd ./oracle
   - ./manage.py test
