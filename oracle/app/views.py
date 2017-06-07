@@ -170,11 +170,13 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
         callback_url = get_callback_url(self.request, multisig_address)
         subscription_id = ""
         created_time = ""
+        confirmation = settings.CONFIRMATION
 
         try:
             subscription_id, created_time = gcoincore.subscribe_address_notification(
                 address=multisig_address,
-                callback_url=callback_url)
+                callback_url=callback_url,
+                confirmation=confirmation)
         except Exception as e:
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
 
@@ -432,7 +434,7 @@ class AddressNotified(APIView):
             status: State-Update is failed or completed
         """
         multisig_address = self.kwargs['multisig_address']
-        form = NotifyForm(request.POST)
+        form = NotifyForm(request.data)
         tx_hash = ""
 
         if form.is_valid():

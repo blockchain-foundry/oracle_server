@@ -90,7 +90,7 @@ class MultisigAddrTest(TestCase):
         callback_url = "http://172.18.250.12:7788/addressnotify/" + multisig_address
         return callback_url
 
-    def fake_subscribe_address_notification(self, multisig_address, callback_url):
+    def fake_subscribe_address_notification(self, multisig_address, callback_url, confirmation):
         subscription_id = "1"
         created_time = "2017-03-15"
         return subscription_id, created_time
