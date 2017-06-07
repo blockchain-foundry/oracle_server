@@ -30,6 +30,7 @@ before_script:
   - sed -i 's/^SECRET_KEY=.*/SECRET_KEY=SECRET_KEY/g' ./oracle/.env
   - sed -i 's/ALLOWED_HOSTS=.*/ALLOWED_HOSTS=/g' ./oracle/.env
   - sed -i 's/LOG_PATH=.*/LOG_PATH=/g' ./oracle/.env
+  - sed -i 's/CONFIRMATION=.*/CONFIRMATION=1/g' ./oracle/.env
   - pep8 --exclude=migrations --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
   - flake8 --exclude=migrations,settings,__init__.py --ignore=E123,E133,E226,E241,E242,E402,E501,W503 ./oracle/
   - mkdir log

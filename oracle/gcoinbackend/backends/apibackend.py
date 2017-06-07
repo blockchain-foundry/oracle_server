@@ -138,9 +138,9 @@ class GcoinAPIBackend(BaseGcoinBackend):
         except GcoinAPIError:
             raise exceptions.SubscribeTxNotificationFail
 
-    def subscribe_address_notification(self, address, callback_url):
+    def subscribe_address_notification(self, address, callback_url, confirmation):
         try:
-            return self.client.subscribe_address_notification(address, callback_url)
+            return self.client.subscribe_address_notification(address, callback_url, confirmation)
         except GcoinAPIError:
             raise exceptions.SubscribeTxNotificationFail
 

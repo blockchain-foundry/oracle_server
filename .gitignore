@@ -4,6 +4,7 @@
 **.sqlite*
 
 oracle_venv/
+go-ethereum/
 
 # Environment setting
 oracle/.env
