@@ -1,5 +1,7 @@
 from django.db import models
+from django.utils.crypto import get_random_string
 
+from gcoin import (pubtoaddr, privtopub, sha256)
 
 # class Oracle(models.Model):
 #   created = models.DateTimeField(auto_now_add=True)
@@ -9,9 +11,31 @@ from django.db import models
 #   class Meta:
 #       ordering = ('created',)
 
+
+class KeystoreQuerySet(models.query.QuerySet):
+
+    def create_new_keypair(self, is_default=False):
+        private_key = sha256(get_random_string(64, '0123456789abcdef'))
+        public_key = privtopub(private_key)
+        keystore = self.create(private_key=private_key,
+                               public_key=public_key, is_default=is_default)
+        return keystore
+
+    def get_default_keypair(self):
+        try:
+            keystore = self.get(is_default=True)
+        except Keystore.DoesNotExist:
+            keystore = self.create_new_keypair(is_default=True)
+
+        return keystore
+
+
 class Keystore(models.Model):
     public_key = models.CharField(max_length=200)
     private_key = models.CharField(max_length=100)
+    is_default = models.BooleanField(default=False)
+
+    objects = KeystoreQuerySet.as_manager()
 
 
 class OraclizeContract(models.Model):
@@ -24,22 +48,18 @@ class OraclizeContract(models.Model):
         ordering = ('address',)
 
 
-class ProposalOraclizeLink(models.Model):
-    receiver = models.CharField(max_length=100)
-    color = models.CharField(max_length=100)
-    oraclize_contract = models.ForeignKey(OraclizeContract)
-
-    class Meta:
-        ordering = ('color',)
-
-
 class Proposal(models.Model):
-    source_code = models.TextField()
     public_key = models.CharField(max_length=200)
     multisig_address = models.CharField(max_length=100, blank=True)
     created = models.DateTimeField(auto_now_add=True)
-    address = models.CharField(max_length=100)
-    links = models.ManyToManyField(ProposalOraclizeLink)
+    is_state_multisig = models.BooleanField(default=False)
 
     class Meta:
         ordering = ('public_key',)
+
+    def as_dict(self):
+        return {
+            'public_key': self.public_key,
+            'multisig_address': self.multisig_address,
+            'is_state_multisig': self.is_state_multisig
+        }

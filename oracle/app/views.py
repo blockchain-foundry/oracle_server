@@ -15,11 +15,10 @@ from django.conf import settings
 
 from rest_framework import status
 from rest_framework.views import APIView
-from app.models import Proposal, Keystore, OraclizeContract, ProposalOraclizeLink
-from app.serializers import ProposalSerializer
+from app.models import Keystore, OraclizeContract, Proposal
 from evm_manager import deploy_contract_utils
 from evm_manager.utils import wallet_address_to_evm
-from .forms import MultisigAddrFrom, ProposeForm, SignForm, NotifyForm
+from .forms import MultisigAddrFrom, SignForm, NotifyForm
 from oracle.mixins import CsrfExemptMixin
 from gcoinbackend import core as gcoincore
 from app import response_utils
@@ -82,70 +81,13 @@ class Proposes(CsrfExemptMixin, BaseFormView):
     """
     Give the publicKey when invoked.
     """
-    http_method_name = ['post']
-    form_class = ProposeForm
+    http_method_name = ['get']
 
-    def form_valid(self, form):
-        # Return public key to Contract-Server
-        source_code = form.cleaned_data.get('source_code')
-        conditions_string = form.cleaned_data.get('conditions')
-
-        private_key = sha256(get_random_string(64, '0123456789abcdef'))
-        public_key = privtopub(private_key)
-        address = pubtoaddr(public_key)
-        p = Proposal(source_code=source_code, public_key=public_key, address=address)
-        k = Keystore(public_key=public_key, private_key=private_key)
-        p.save()
-        k.save()
-
-        if conditions_string:
-            conditions = ast.literal_eval(conditions_string)
-            for condition in conditions:
-                if condition['condition_type'] == 'specifies_balance' or condition['condition_type'] == 'issuance_of_asset_transfer':
-                    o = OraclizeContract.objects.get(name=condition['condition_type'])
-                    l = ProposalOraclizeLink.objects.create(receiver=condition['receiver_addr'], color=condition[
-                                                            'color'], oraclize_contract=o)
-                    p.links.add(l)
-                else:
-                    o = OraclizeContract.objects.get(name=condition['condition_type'])
-                    l = ProposalOraclizeLink.objects.create(
-                        receiver='0', color='0', oraclize_contract=o)
-                    p.links.add(l)
-
+    def get(self, request):
+        keystore = Keystore.objects.get_default_keypair()
+        public_key = keystore.public_key
         response = {'public_key': public_key}
         return JsonResponse(response, status=httplib.OK)
-
-    def form_invalid(self, form):
-        response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
-
-
-class NewProposes(CsrfExemptMixin, BaseFormView):
-    """
-    Give the publicKey when invoked.
-    """
-    http_method_name = ['post']
-    form_class = ProposeForm
-
-    def form_valid(self, form):
-        # Return public key to Contract-Server
-        # source_code = form.cleaned_data.get('source_code')
-        # conditions_string = form.cleaned_data.get('conditions')
-        source_code = "empty_source_code"
-        private_key = sha256(get_random_string(64, '0123456789abcdef'))
-        public_key = privtopub(private_key)
-        address = pubtoaddr(public_key)
-        p = Proposal(source_code=source_code, public_key=public_key, address=address)
-        k = Keystore(public_key=public_key, private_key=private_key)
-        p.save()
-        k.save()
-
-        response = {'public_key': public_key}
-        return JsonResponse(response, status=httplib.OK)
-
-    def form_invalid(self, form):
-        response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
 
 
 class Multisig_addr(CsrfExemptMixin, BaseFormView):
@@ -153,11 +95,13 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
     form_class = MultisigAddrFrom
 
     def form_valid(self, form):
-        pubkey = form.cleaned_data.get('pubkey')
+        pubkey = form.get_pubkey()
         multisig_address = form.cleaned_data.get('multisig_address')
+        is_state_multisig = form.cleaned_data.get('is_state_multisig')
 
         try:
-            p = Proposal.objects.get(public_key=pubkey)
+            p = Proposal.objects.create(
+                public_key=pubkey, multisig_address=multisig_address, is_state_multisig=is_state_multisig)
             deploy_contract_utils.make_multisig_address_file(multisig_address)
         except Proposal.DoesNotExist:
             return response_utils.error_response(httplib.BAD_REQUEST, "Cannot find proposal with this pubkey.")
@@ -181,7 +125,8 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
 
         response = {
-            'status': 'success'
+            'status': 'success',
+            'proposal': p.as_dict(),
         }
         return JsonResponse(response)
 
@@ -332,15 +277,6 @@ class SignNew(CsrfExemptMixin, BaseFormView):
         return old_utxo, all_utxos
 
 
-class ProposalList(APIView):
-
-    def get(self, request):
-        proposals = Proposal.objects.all()
-        serializer = ProposalSerializer(proposals, many=True)
-        response = {'proposal': serializer.data}
-        return HttpResponse(json.dumps(response), content_type="application/json")
-
-
 class GetBalance(ProcessFormView):
     http_method_name = ['get']
 
@@ -421,6 +357,7 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
 
 
 class AddressNotified(APIView):
+
     def post(self, request, *args, **kwargs):
         """ Receive Address Notification From OSS
 
@@ -442,7 +379,8 @@ class AddressNotified(APIView):
         else:
             return response_utils.error_response(httplib.NOT_ACCEPTABLE, form.errors)
 
-        response = {"message": 'Received notify with address ' + multisig_address + ', tx_hash ' + tx_hash}
+        response = {"message": 'Received notify with address ' +
+                    multisig_address + ', tx_hash ' + tx_hash}
         print('Received notify with address ' + multisig_address + ', tx_hash ' + tx_hash)
         t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
         t.start()

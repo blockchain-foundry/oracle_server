@@ -24,7 +24,7 @@ except:
 THIS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 CONTRACT_PATH_FORMAT = THIS_FILE_PATH + '/../states/{multisig_address}'
 EVM_LOG_PATH_FORMAT = THIS_FILE_PATH + '/../states/{multisig_address}_{tx_hash}_log'
-EVM_PATH = THIS_FILE_PATH + '/../../go-ethereum/build/bin/evm'
+EVM_PATH = '/home/ugly/Smart-Contract/go-ethereum/build/bin/evm'
 CONTRACT_FEE_COLOR = 1
 CONTRACT_FEE_AMOUNT = 100000000
 logger = logging.getLogger(__name__)
@@ -50,11 +50,13 @@ def deploy_contracts(tx_hash, rebuild=False):
         rebuild_state_file(multisig_address)
     txs, latest_tx_hash = get_unexecuted_txs(multisig_address, tx_hash, tx['time'])
 
-    logger.info('Start : The latest updated tx of ' + multisig_address + ' is ' + (latest_tx_hash or 'None'))
+    logger.info('Start : The latest updated tx of ' +
+                multisig_address + ' is ' + (latest_tx_hash or 'None'))
     logger.info(str(len(txs)) + ' non-updated txs are found')
 
     for i, tx in enumerate(txs):
-        logger.info(str(i+1) + '/' + str(len(txs)) + ' updating tx: ' + tx['type'] + ' ' + tx['hash'])
+        logger.info(str(i + 1) + '/' + str(len(txs)) +
+                    ' updating tx: ' + tx['type'] + ' ' + tx['hash'])
         deploy_single_tx(tx, latest_tx_hash, multisig_address)
         if tx['type'] == 'CONTRACT':
             if IN_CONTRACT_SERVER:
@@ -79,7 +81,8 @@ def deploy_single_tx(tx, ex_tx_hash, multisig_address):
 
 def update_contract_type(tx_info, ex_tx_hash, multisig_address, sender_address):
     command, contract_address, is_deploy = get_command(tx_info, sender_address)
-    write_state_contract_type(tx_info, ex_tx_hash, multisig_address, sender_address, command, contract_address, is_deploy)
+    write_state_contract_type(tx_info, ex_tx_hash, multisig_address,
+                              sender_address, command, contract_address, is_deploy)
 
 
 def update_cashout_type(tx_info, ex_tx_hash, multisig_address):
