@@ -2,22 +2,16 @@ from app.models import Proposal
 from app.oraclize import deployOraclizeContract, set_var_oraclize_contract
 from gcoinbackend import core as gcoincore
 
-
-def deploy_oraclize_contract(multisig_address):
-    p = Proposal.objects.get(multisig_address=multisig_address)
-    links = p.links.all()
-    for link in links:
-        contract = link.oraclize_contract
-        deployOraclizeContract(multisig_address, contract.address, contract.byte_code)
+from .utils import make_contract_multisig_address
+from .models import ContractInfo, StateInfo
 
 
-def set_var_to_oraclize_contract(multisig_address, tx_info):
-    p = Proposal.objects.get(multisig_address=multisig_address)
-    links = p.links.all()
-    for link in links:
-        info = get_oraclize_info(link, tx_info)
-        contract = link.oraclize_contract
-        set_var_oraclize_contract(multisig_address, contract.address, info)
+def deploy_new_contract(state_multisig_address, contract_address, sender_address, tx_info):
+    contract_multisig_address, contract_multisig_script, m = make_contract_multisig_address(
+        tx_info['hash'], contract_address)
+    state_info = StateInfo.objects.get(multisig_address=state_multisig_address)
+    ContractInfo.objects.create(
+        state_info=state_info, multisig_address=contract_multisig_address, contract_address=contract_address)
 
 
 def get_oraclize_info(link, tx_info):

@@ -35,7 +35,6 @@ class MultisigAddrFrom(forms.Form):
 
     def get_pubkey(self):
         if self.cleaned_data.get('pubkey'):
-            print('bbbb')
             return self.cleaned_data.get('pubkey')
         elif self.cleaned_data.get('pubkey_list'):
             pubkey_list = self.cleaned_data.get('pubkey_list')
@@ -56,7 +55,6 @@ class MultisigAddrFrom(forms.Form):
         pubkey_list = self.cleaned_data.get('pubkey_list')
         if pubkey_list:
             pubkey_list = ast.literal_eval(self.cleaned_data.get('pubkey_list'))
-            print(pubkey_list)
             if not Keystore.objects.filter(public_key__in=pubkey_list).exists():
                 raise forms.ValidationError(
                     'No public is not belonged to this orcale.'

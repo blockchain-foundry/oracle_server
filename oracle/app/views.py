@@ -71,6 +71,7 @@ def get_callback_url(request, multisig_address):
 def evm_deploy(tx_hash):
     print('Deploy tx_hash ' + tx_hash)
     completed = deploy_contract_utils.deploy_contracts(tx_hash)
+
     if completed:
         print('Deployed Success')
     else:
@@ -351,8 +352,9 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
         response = {"message": 'Received notify with tx_hash ' + tx_hash}
         print('Received notify with tx_hash ' + tx_hash)
 
-        t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
-        t.start()
+        # t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
+        # t.start()
+        evm_deploy(tx_hash)
         return JsonResponse(response, status=httplib.OK)
 
 

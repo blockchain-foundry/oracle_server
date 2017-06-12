@@ -4,7 +4,7 @@ from subprocess import check_call, PIPE, STDOUT, Popen
 import json
 import os
 from gcoinbackend import core as gcoincore
-from .utils import wallet_address_to_evm, get_tx_info, get_sender_address, get_multisig_address, make_contract_address
+from .utils import wallet_address_to_evm, get_tx_info, get_sender_address, get_multisig_address, make_contract_address, get_state_multisig_info
 from .decorators import retry, write_lock, handle_exception
 from .models import StateInfo
 import logging
@@ -16,7 +16,7 @@ try:
 except:
     IN_CONTRACT_SERVER = False
 try:
-    from .oracle_server_utils import deploy_oraclize_contract, set_var_to_oraclize_contract
+    from .oracle_server_utils import deploy_new_contract
     IN_ORACLE_SERVER = True
 except:
     IN_ORACLE_SERVER = False
@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 MAX_RETRY = 10
 
 
-@handle_exception
 def deploy_contracts(tx_hash, rebuild=False):
     """
         May be slow when one block contains seas of transactions.
@@ -43,24 +42,27 @@ def deploy_contracts(tx_hash, rebuild=False):
     logger.info('/notify/' + tx_hash)
 
     tx = get_tx(tx_hash)
-    multisig_address = get_multisig_address(tx)
+    state_multisig_address, state_multisig_script, m = get_state_multisig_info(tx)
+    print('state_multisig_address', state_multisig_address)
+
     if tx['type'] == 'NORMAL' and multisig_address is None:
         raise UnsupportedTxTypeError
     if rebuild:
         rebuild_state_file(multisig_address)
-    txs, latest_tx_hash = get_unexecuted_txs(multisig_address, tx_hash, tx['time'])
+    txs, latest_tx_hash = get_unexecuted_txs(state_multisig_address, tx_hash, tx['time'])
 
     logger.info('Start : The latest updated tx of ' +
-                multisig_address + ' is ' + (latest_tx_hash or 'None'))
+                state_multisig_address + ' is ' + (latest_tx_hash or 'None'))
     logger.info(str(len(txs)) + ' non-updated txs are found')
+    print(str(len(txs)) + ' non-updated txs are found')
 
     for i, tx in enumerate(txs):
         logger.info(str(i + 1) + '/' + str(len(txs)) +
                     ' updating tx: ' + tx['type'] + ' ' + tx['hash'])
-        deploy_single_tx(tx, latest_tx_hash, multisig_address)
+        deploy_single_tx(tx, latest_tx_hash, state_multisig_address)
         if tx['type'] == 'CONTRACT':
             if IN_CONTRACT_SERVER:
-                state_log_utils.check_watch(tx['hash'], multisig_address)
+                state_log_utils.check_watch(tx['hash'], state_multisig_address)
         latest_tx_hash = tx['hash']
 
     logger.info('Finish: The latest updated tx is ' + (latest_tx_hash or 'None'))
@@ -98,13 +100,13 @@ def write_state_contract_type(tx_info, ex_tx_hash, multisig_address, sender_addr
     if is_deploy:
         check_call(command, shell=True)
         inc_nonce(multisig_address, sender_address)
+        print('IN_ORACLE_SERVER: ' + str(IN_ORACLE_SERVER))
         if IN_ORACLE_SERVER:
-            deploy_oraclize_contract(multisig_address)
+            print('deploy_contract')
+            deploy_new_contract(multisig_address, contract_address, sender_address, tx_info)
         if IN_CONTRACT_SERVER:
             set_contract_address(multisig_address, contract_address, sender_address, tx_info)
     else:
-        if IN_ORACLE_SERVER:
-            set_var_to_oraclize_contract(multisig_address, tx_info)
         check_call(command, shell=True)
         inc_nonce(multisig_address, sender_address)
 
@@ -192,14 +194,16 @@ def get_unexecuted_txs(multisig_address, tx_hash, _time):
 def get_command(tx_info, sender_address):
     _time = tx_info['time']
     tx_hash = tx_info['hash']
+    state_multisig_address = tx_info['state_multisig_address']
     bytecode = tx_info['op_return']['bytecode']
     is_deploy = tx_info['op_return']['is_deploy']
-    multisig_address = tx_info['op_return']['multisig_address']
-    contract_address = tx_info['op_return']['contract_address']
-    value = get_value(tx_info, multisig_address)
+    contract_address = tx_info['contract_address']
+    value = get_value(tx_info, state_multisig_address)
     sender_hex = wallet_address_to_evm(sender_address)
-    contract_path = CONTRACT_PATH_FORMAT.format(multisig_address=multisig_address)
-    log_path = EVM_LOG_PATH_FORMAT.format(multisig_address=multisig_address, tx_hash=tx_hash)
+
+    contract_path = CONTRACT_PATH_FORMAT.format(multisig_address=state_multisig_address)
+    log_path = EVM_LOG_PATH_FORMAT.format(multisig_address=state_multisig_address, tx_hash=tx_hash)
+
     command = EVM_PATH + \
         " --sender " + sender_hex + \
         " --fund " + "'" + value + "'" + \
@@ -209,12 +213,15 @@ def get_command(tx_info, sender_address):
         " --time " + str(_time) + \
         " --writelog " + log_path
     if is_deploy:
-        contract_address = make_contract_address(multisig_address, sender_address)
+        contract_address = make_contract_address(state_multisig_address, sender_address)
         command = command + \
             " --receiver " + contract_address + \
             " --code " + bytecode + \
             " --deploy "
     else:
+        print(tx_info['hash'])
+        print(contract_address)
+        print(bytecode) 
         command = command + \
             " --receiver " + contract_address + \
             " --input " + bytecode
