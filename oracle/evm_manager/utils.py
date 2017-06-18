@@ -142,7 +142,6 @@ def get_tx_info(tx_or_hash):
     data['confirmations'] = confirmations
     data['state_multisig_address'] = state_multisig_address
     data['contract_multisig_address'] = contract_multisig_address
-    print('get_contract_multisig_address:' + str(contract_multisig_address))
     try:
         contract_info = ContractInfo.objects.get(multisig_address=contract_multisig_address)
         data['contract_address'] = contract_info.contract_address

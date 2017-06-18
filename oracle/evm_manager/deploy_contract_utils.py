@@ -24,7 +24,7 @@ except:
 THIS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 CONTRACT_PATH_FORMAT = THIS_FILE_PATH + '/../states/{multisig_address}'
 EVM_LOG_PATH_FORMAT = THIS_FILE_PATH + '/../states/{multisig_address}_{tx_hash}_log'
-EVM_PATH = '/home/ugly/Smart-Contract/go-ethereum/build/bin/evm'
+EVM_PATH = THIS_FILE_PATH + '/../../go-ethereum/build/bin/evm'
 CONTRACT_FEE_COLOR = 1
 CONTRACT_FEE_AMOUNT = 100000000
 logger = logging.getLogger(__name__)
@@ -43,7 +43,6 @@ def deploy_contracts(tx_hash, rebuild=False):
 
     tx = get_tx(tx_hash)
     state_multisig_address, state_multisig_script, m = get_state_multisig_info(tx)
-    print('state_multisig_address', state_multisig_address)
 
     if tx['type'] == 'NORMAL' and multisig_address is None:
         raise UnsupportedTxTypeError
@@ -100,9 +99,7 @@ def write_state_contract_type(tx_info, ex_tx_hash, multisig_address, sender_addr
     if is_deploy:
         check_call(command, shell=True)
         inc_nonce(multisig_address, sender_address)
-        print('IN_ORACLE_SERVER: ' + str(IN_ORACLE_SERVER))
         if IN_ORACLE_SERVER:
-            print('deploy_contract')
             deploy_new_contract(multisig_address, contract_address, sender_address, tx_info)
         if IN_CONTRACT_SERVER:
             set_contract_address(multisig_address, contract_address, sender_address, tx_info)
@@ -219,9 +216,6 @@ def get_command(tx_info, sender_address):
             " --code " + bytecode + \
             " --deploy "
     else:
-        print(tx_info['hash'])
-        print(contract_address)
-        print(bytecode) 
         command = command + \
             " --receiver " + contract_address + \
             " --input " + bytecode
@@ -294,7 +288,6 @@ def call_constant_function(sender_address, multisig_address, byte_code, value, c
         contract_address = wallet_address_to_evm(contract_address)
     sender_evm_address = wallet_address_to_evm(sender_address)
     contract_path = CONTRACT_PATH_FORMAT.format(multisig_address=multisig_address)
-    print("Contract path: ", contract_path)
 
     command = '{EVM_PATH} --sender {sender_evm_address} --fund {value} --value {value} \
         --write {contract_path} --input {byte_code} --receiver {contract_address} --read {contract_path}'.format(
