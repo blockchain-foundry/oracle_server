@@ -22,7 +22,8 @@ from app.views import (CheckContractCode, DumpContractState, GetBalance,
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^proposals/', Proposes.as_view()),
+    url(r'^proposals/$', Proposes.as_view()),
+    url(r'^proposals/(?P<multisig_address>[a-zA-Z0-9]+)/', Proposes.as_view()),
     url(r'^sign/', Sign.as_view()),
     url(r'^signnew/', SignNew.as_view()),
     url(r'^multisigaddress/', Multisig_addr.as_view()),

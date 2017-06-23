@@ -84,9 +84,22 @@ class Proposes(CsrfExemptMixin, BaseFormView):
     """
     http_method_name = ['get']
 
-    def get(self, request):
-        keystore = Keystore.objects.get_default_keypair()
-        public_key = keystore.public_key
+    def get(self, request, *args, **kwargs):
+        multisig_address = None
+        if 'multisig_address' in kwargs:
+            multisig_address = kwargs['multisig_address']
+        if multisig_address:
+            try:
+                proposal = Proposal.objects.get(multisig_address=multisig_address)
+                public_key = proposal.public_key
+            except Proposal.DoesNotExist:
+                response = {
+                    'error': 'no matching multisig address.'
+                }
+                return JsonResponse(response, status=httplib.NOT_FOUND)
+        else:
+            keystore = Keystore.objects.get_default_keypair()
+            public_key = keystore.public_key
         response = {'public_key': public_key}
         return JsonResponse(response, status=httplib.OK)
 
