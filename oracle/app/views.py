@@ -114,16 +114,14 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
         is_state_multisig = form.cleaned_data.get('is_state_multisig')
 
         try:
-            p = Proposal.objects.create(
+            p, _ = Proposal.objects.get_or_create(
                 public_key=pubkey, multisig_address=multisig_address, is_state_multisig=is_state_multisig)
-            deploy_contract_utils.make_multisig_address_file(multisig_address)
+            if is_state_multisig:
+                deploy_contract_utils.make_multisig_address_file(multisig_address)
         except Proposal.DoesNotExist:
             return response_utils.error_response(httplib.BAD_REQUEST, "Cannot find proposal with this pubkey.")
         except Exception as e:
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
-
-        p.multisig_address = multisig_address
-        p.save()
 
         callback_url = get_callback_url(self.request, multisig_address)
         subscription_id = ""

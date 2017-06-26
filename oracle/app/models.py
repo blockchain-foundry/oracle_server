@@ -50,7 +50,7 @@ class OraclizeContract(models.Model):
 
 class Proposal(models.Model):
     public_key = models.CharField(max_length=200)
-    multisig_address = models.CharField(max_length=100, blank=True)
+    multisig_address = models.CharField(max_length=100, blank=True, unique=True)
     created = models.DateTimeField(auto_now_add=True)
     is_state_multisig = models.BooleanField(default=False)
 

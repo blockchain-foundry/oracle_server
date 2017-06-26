@@ -19,7 +19,7 @@ class MultisigAddrFrom(forms.Form):
     pubkey = forms.CharField(required=False)
     pubkey_list = forms.CharField(required=False)
     multisig_address = forms.CharField(required=True)
-    is_state_multisig = forms.BooleanField(required=True)
+    is_state_multisig = forms.BooleanField(required=False)
 
     def clean(self):
         cleaned_data = super(MultisigAddrFrom, self).clean()
