@@ -199,11 +199,9 @@ def _process_op_return(tx):
             public_keys = ast.literal_eval(data.get('public_keys'))
             if data.get('source_code'):
                 is_deploy = True
-                contract_address = None
                 bytecode = data.get('source_code')
             elif data.get('function_inputs_hash'):
                 is_deploy = False
-                contract_address = data.get('contract_address')
                 bytecode = data.get('function_inputs_hash')
     data = {}
     data['hex'] = op_return
@@ -275,7 +273,6 @@ def get_contract_multisig_address(tx_or_hash):
 
 
 def make_contract_multisig_address(tx_or_hash, contract_address):
-    tx = get_tx(tx_or_hash) if isinstance(tx_or_hash, str) else tx_or_hash
     pubkeys = get_public_keys(tx_or_hash)
     _, _, m = get_state_multisig_info(tx_or_hash)
     multisig_script = mk_multisig_script(pubkeys, m, contract_address)

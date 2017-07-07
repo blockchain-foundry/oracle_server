@@ -4,8 +4,8 @@ from subprocess import check_call, PIPE, STDOUT, Popen
 import json
 import os
 from gcoinbackend import core as gcoincore
-from .utils import wallet_address_to_evm, get_tx_info, get_sender_address, get_multisig_address, make_contract_address, get_state_multisig_info
-from .decorators import retry, write_lock, handle_exception
+from .utils import wallet_address_to_evm, get_tx_info, get_sender_address, make_contract_address, get_state_multisig_info
+from .decorators import retry, write_lock
 from .models import StateInfo
 import logging
 from .exceptions import TxNotFoundError, DoubleSpendingError, UnsupportedTxTypeError, TxUnconfirmedError
@@ -44,10 +44,10 @@ def deploy_contracts(tx_hash, rebuild=False):
     tx = get_tx(tx_hash)
     state_multisig_address, state_multisig_script, m = get_state_multisig_info(tx)
 
-    if tx['type'] == 'NORMAL' and multisig_address is None:
+    if tx['type'] == 'NORMAL' and state_multisig_address is None:
         raise UnsupportedTxTypeError
     if rebuild:
-        rebuild_state_file(multisig_address)
+        rebuild_state_file(state_multisig_address)
     txs, latest_tx_hash = get_unexecuted_txs(state_multisig_address, tx_hash, tx['time'])
 
     logger.info('Start : The latest updated tx of ' +

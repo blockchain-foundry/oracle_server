@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.crypto import get_random_string
 
-from gcoin import (pubtoaddr, privtopub, sha256)
+from gcoin import privtopub, sha256
 
 # class Oracle(models.Model):
 #   created = models.DateTimeField(auto_now_add=True)

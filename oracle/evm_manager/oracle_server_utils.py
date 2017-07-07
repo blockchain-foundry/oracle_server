@@ -1,5 +1,3 @@
-from app.models import Proposal
-from app.oraclize import deployOraclizeContract, set_var_oraclize_contract
 from gcoinbackend import core as gcoincore
 
 from .utils import make_contract_multisig_address

@@ -1,15 +1,12 @@
-import ast
 import base58
 import binascii
 import hashlib
 import json
 import re
 
-from gcoin import (multisign, deserialize, pubtoaddr,
-                   privtopub, sha256, ripemd)
+from gcoin import multisign, deserialize, ripemd
 
-from django.http import HttpResponse, JsonResponse
-from django.utils.crypto import get_random_string
+from django.http import JsonResponse
 from django.views.generic.edit import BaseFormView, ProcessFormView
 from django.conf import settings
 
@@ -124,8 +121,8 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
 
         callback_url = get_callback_url(self.request, multisig_address)
-        subscription_id = ""
-        created_time = ""
+        subscription_id = ''
+        created_time = ''
         confirmation = settings.CONFIRMATION
 
         try:
@@ -144,7 +141,7 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
 
     def form_invalid(self, form):
         response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
+        return response_utils.error_response(httplib.BAD_REQUEST, response)
 
 
 class Sign(CsrfExemptMixin, BaseFormView):
@@ -363,9 +360,8 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
         response = {"message": 'Received notify with tx_hash ' + tx_hash}
         print('Received notify with tx_hash ' + tx_hash)
 
-        # t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
-        # t.start()
-        evm_deploy(tx_hash)
+        t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
+        t.start()
         return JsonResponse(response, status=httplib.OK)
 
 
