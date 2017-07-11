@@ -1,25 +1,21 @@
-import ast
 import base58
 import binascii
 import hashlib
 import json
 import re
 
-from gcoin import (multisign, deserialize, pubtoaddr,
-                   privtopub, sha256, ripemd)
+from gcoin import multisign, deserialize, ripemd
 
-from django.http import HttpResponse, JsonResponse
-from django.utils.crypto import get_random_string
+from django.http import JsonResponse
 from django.views.generic.edit import BaseFormView, ProcessFormView
 from django.conf import settings
 
 from rest_framework import status
 from rest_framework.views import APIView
-from app.models import Proposal, Keystore, OraclizeContract, ProposalOraclizeLink
-from app.serializers import ProposalSerializer
+from app.models import Keystore, OraclizeContract, Proposal
 from evm_manager import deploy_contract_utils
 from evm_manager.utils import wallet_address_to_evm
-from .forms import MultisigAddrFrom, ProposeForm, SignForm, NotifyForm
+from .forms import MultisigAddrFrom, SignForm, NotifyForm
 from oracle.mixins import CsrfExemptMixin
 from gcoinbackend import core as gcoincore
 from app import response_utils
@@ -72,6 +68,7 @@ def get_callback_url(request, multisig_address):
 def evm_deploy(tx_hash):
     print('Deploy tx_hash ' + tx_hash)
     completed = deploy_contract_utils.deploy_contracts(tx_hash)
+
     if completed:
         print('Deployed Success')
     else:
@@ -82,70 +79,26 @@ class Proposes(CsrfExemptMixin, BaseFormView):
     """
     Give the publicKey when invoked.
     """
-    http_method_name = ['post']
-    form_class = ProposeForm
+    http_method_name = ['get']
 
-    def form_valid(self, form):
-        # Return public key to Contract-Server
-        source_code = form.cleaned_data.get('source_code')
-        conditions_string = form.cleaned_data.get('conditions')
-
-        private_key = sha256(get_random_string(64, '0123456789abcdef'))
-        public_key = privtopub(private_key)
-        address = pubtoaddr(public_key)
-        p = Proposal(source_code=source_code, public_key=public_key, address=address)
-        k = Keystore(public_key=public_key, private_key=private_key)
-        p.save()
-        k.save()
-
-        if conditions_string:
-            conditions = ast.literal_eval(conditions_string)
-            for condition in conditions:
-                if condition['condition_type'] == 'specifies_balance' or condition['condition_type'] == 'issuance_of_asset_transfer':
-                    o = OraclizeContract.objects.get(name=condition['condition_type'])
-                    l = ProposalOraclizeLink.objects.create(receiver=condition['receiver_addr'], color=condition[
-                                                            'color'], oraclize_contract=o)
-                    p.links.add(l)
-                else:
-                    o = OraclizeContract.objects.get(name=condition['condition_type'])
-                    l = ProposalOraclizeLink.objects.create(
-                        receiver='0', color='0', oraclize_contract=o)
-                    p.links.add(l)
-
+    def get(self, request, *args, **kwargs):
+        multisig_address = None
+        if 'multisig_address' in kwargs:
+            multisig_address = kwargs['multisig_address']
+        if multisig_address:
+            try:
+                proposal = Proposal.objects.get(multisig_address=multisig_address)
+                public_key = proposal.public_key
+            except Proposal.DoesNotExist:
+                response = {
+                    'error': 'no matching multisig address.'
+                }
+                return JsonResponse(response, status=httplib.NOT_FOUND)
+        else:
+            keystore = Keystore.objects.get_default_keypair()
+            public_key = keystore.public_key
         response = {'public_key': public_key}
         return JsonResponse(response, status=httplib.OK)
-
-    def form_invalid(self, form):
-        response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
-
-
-class NewProposes(CsrfExemptMixin, BaseFormView):
-    """
-    Give the publicKey when invoked.
-    """
-    http_method_name = ['post']
-    form_class = ProposeForm
-
-    def form_valid(self, form):
-        # Return public key to Contract-Server
-        # source_code = form.cleaned_data.get('source_code')
-        # conditions_string = form.cleaned_data.get('conditions')
-        source_code = "empty_source_code"
-        private_key = sha256(get_random_string(64, '0123456789abcdef'))
-        public_key = privtopub(private_key)
-        address = pubtoaddr(public_key)
-        p = Proposal(source_code=source_code, public_key=public_key, address=address)
-        k = Keystore(public_key=public_key, private_key=private_key)
-        p.save()
-        k.save()
-
-        response = {'public_key': public_key}
-        return JsonResponse(response, status=httplib.OK)
-
-    def form_invalid(self, form):
-        response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
 
 
 class Multisig_addr(CsrfExemptMixin, BaseFormView):
@@ -153,23 +106,23 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
     form_class = MultisigAddrFrom
 
     def form_valid(self, form):
-        pubkey = form.cleaned_data.get('pubkey')
+        pubkey = form.get_pubkey()
         multisig_address = form.cleaned_data.get('multisig_address')
+        is_state_multisig = form.cleaned_data.get('is_state_multisig')
 
         try:
-            p = Proposal.objects.get(public_key=pubkey)
-            deploy_contract_utils.make_multisig_address_file(multisig_address)
+            p, _ = Proposal.objects.get_or_create(
+                public_key=pubkey, multisig_address=multisig_address, is_state_multisig=is_state_multisig)
+            if is_state_multisig:
+                deploy_contract_utils.make_multisig_address_file(multisig_address)
         except Proposal.DoesNotExist:
             return response_utils.error_response(httplib.BAD_REQUEST, "Cannot find proposal with this pubkey.")
         except Exception as e:
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
 
-        p.multisig_address = multisig_address
-        p.save()
-
         callback_url = get_callback_url(self.request, multisig_address)
-        subscription_id = ""
-        created_time = ""
+        subscription_id = ''
+        created_time = ''
         confirmation = settings.CONFIRMATION
 
         try:
@@ -181,13 +134,14 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
             return response_utils.error_response(httplib.INTERNAL_SERVER_ERROR, str(e))
 
         response = {
-            'status': 'success'
+            'status': 'success',
+            'proposal': p.as_dict(),
         }
         return JsonResponse(response)
 
     def form_invalid(self, form):
         response = {'error': form.errors}
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
+        return response_utils.error_response(httplib.BAD_REQUEST, response)
 
 
 class Sign(CsrfExemptMixin, BaseFormView):
@@ -332,15 +286,6 @@ class SignNew(CsrfExemptMixin, BaseFormView):
         return old_utxo, all_utxos
 
 
-class ProposalList(APIView):
-
-    def get(self, request):
-        proposals = Proposal.objects.all()
-        serializer = ProposalSerializer(proposals, many=True)
-        response = {'proposal': serializer.data}
-        return HttpResponse(json.dumps(response), content_type="application/json")
-
-
 class GetBalance(ProcessFormView):
     http_method_name = ['get']
 
@@ -421,6 +366,7 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
 
 
 class AddressNotified(APIView):
+
     def post(self, request, *args, **kwargs):
         """ Receive Address Notification From OSS
 
@@ -442,7 +388,8 @@ class AddressNotified(APIView):
         else:
             return response_utils.error_response(httplib.NOT_ACCEPTABLE, form.errors)
 
-        response = {"message": 'Received notify with address ' + multisig_address + ', tx_hash ' + tx_hash}
+        response = {"message": 'Received notify with address ' +
+                    multisig_address + ', tx_hash ' + tx_hash}
         print('Received notify with address ' + multisig_address + ', tx_hash ' + tx_hash)
         t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
         t.start()

@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from gcoinbackend import core as gcoincore
-from .deploy_contract_utils import get_multisig_address
+from .utils import get_multisig_address
 from .utils import get_tx
 from .models import StateInfo
 try:

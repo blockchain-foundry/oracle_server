@@ -17,17 +17,16 @@ from django.contrib import admin
 from rest_framework.urlpatterns import format_suffix_patterns
 
 from app.views import (CheckContractCode, DumpContractState, GetBalance,
-                       GetStorage, NewTxNotified, Proposes, ProposalList,
-                       Multisig_addr, Sign, SignNew, NewProposes, AddressNotified)
+                       GetStorage, NewTxNotified, Proposes,
+                       Multisig_addr, Sign, SignNew, AddressNotified)
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^proposals/', Proposes.as_view()),
-    url(r'^newproposals/', NewProposes.as_view()),
+    url(r'^proposals/$', Proposes.as_view()),
+    url(r'^proposals/(?P<multisig_address>[a-zA-Z0-9]+)/', Proposes.as_view()),
     url(r'^sign/', Sign.as_view()),
     url(r'^signnew/', SignNew.as_view()),
     url(r'^multisigaddress/', Multisig_addr.as_view()),
-    url(r'^proposallist/', ProposalList.as_view()),
     url(r'^storage/(?P<multisig_address>[a-zA-Z0-9]+)/', GetStorage.as_view()),
     url(r'^states/(?P<multisig_address>[a-zA-Z0-9]+)/$', DumpContractState.as_view()),
     url(r'^balance/(?P<multisig_address>[a-zA-Z0-9]+)/(?P<address>[a-zA-Z0-9]+)$',
