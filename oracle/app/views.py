@@ -144,53 +144,6 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
         return response_utils.error_response(httplib.BAD_REQUEST, response)
 
 
-class Sign(CsrfExemptMixin, BaseFormView):
-    http_method_name = ['post']
-    form_class = SignForm
-
-    def form_valid(self, form):
-        tx = form.cleaned_data['raw_tx']
-        script = form.cleaned_data['script']
-        input_index = form.cleaned_data['input_index']
-        sender_address = form.cleaned_data['sender_address']
-        multisig_address = form.cleaned_data['multisig_address']
-        amount = form.cleaned_data['amount']
-        color_id = form.cleaned_data['color']
-
-        user_evm_address = wallet_address_to_evm(sender_address)
-        # need to check contract result before sign Tx
-        try:
-            with open(EVM_PATH.format(multisig_address=multisig_address), 'r') as f:
-                content = json.load(f)
-                account = content['accounts'][user_evm_address]
-                if not account:
-                    response = {'error': 'Address not found'}
-                    return JsonResponse(response, status=httplib.BAD_REQUEST)
-                account_amount = account['balance'][color_id]
-        except IOError:
-            # Log
-            response = {'error': 'contract not found'}
-            return JsonResponse(response, status=httplib.BAD_REQUEST)
-        if int(account_amount) < int(amount):
-            response = {'error': 'insufficient funds'}
-            return JsonResponse(response, status=httplib.BAD_REQUEST)
-
-        # signature = connection.signrawtransaction(tx)
-        p = Proposal.objects.get(multisig_address=multisig_address)
-        private_key = Keystore.objects.get(public_key=p.public_key).private_key
-
-        signature = multisign(tx, input_index, script, private_key)
-        # return only signature hex
-        response = {'signature': signature}
-
-        return JsonResponse(response, status=httplib.OK)
-
-    def form_invalid(self, form):
-        response = {'error': form.errors}
-
-        return JsonResponse(response, status=httplib.BAD_REQUEST)
-
-
 class SignNew(CsrfExemptMixin, BaseFormView):
     http_method_name = ['post']
     form_class = SignForm
@@ -199,11 +152,14 @@ class SignNew(CsrfExemptMixin, BaseFormView):
         tx = form.cleaned_data['raw_tx']
         script = form.cleaned_data['script']
         input_index = form.cleaned_data['input_index']
-        multisig_address = form.cleaned_data['multisig_address']
+        state_multisig_address = form.cleaned_data['state_multisig_address']
+        contract_address = None
+        if 'contract_address' in form.data:
+            contract_address = form.cleaned_data['contract_address']
 
         decoded_tx = deserialize(tx)
         try:
-            old_utxo, all_utxos = self.get_oldest_utxo(multisig_address)
+            old_utxo, all_utxos = self.get_oldest_utxo(state_multisig_address)
             deploy_contract_utils.deploy_contracts(old_utxo[0])
         except:
             response = {'error': 'Do not contain oldest tx'}
@@ -224,16 +180,20 @@ class SignNew(CsrfExemptMixin, BaseFormView):
 
         # need to check contract result before sign Tx
         try:
-            with open(EVM_PATH.format(multisig_address=multisig_address), 'r') as f:
+            with open(EVM_PATH.format(multisig_address=state_multisig_address), 'r') as f:
                 content = json.load(f)
                 for vout in decoded_tx['outs']:
                     output_address = addressFromScriptPubKey(vout['script'])
                     output_color = vout['color']
                     # convert to diqi
                     output_value = vout['value'] / 100000000
-                    if output_address == multisig_address:
+                    if output_address == state_multisig_address:
                         continue
-                    output_evm_address = wallet_address_to_evm(output_address)
+                    if contract_address:
+                        output_evm_address = contract_address
+                        # TODO check make_contract_multisig_address correct
+                    else:
+                        output_evm_address = wallet_address_to_evm(output_address)
                     account = None
                     if output_evm_address in content['accounts']:
                         account = content['accounts'][output_evm_address]
@@ -252,7 +212,7 @@ class SignNew(CsrfExemptMixin, BaseFormView):
             return JsonResponse(response, status=httplib.INTERNAL_SERVER_ERROR)
 
         # signature = connection.signrawtransaction(tx)
-        p = Proposal.objects.get(multisig_address=multisig_address)
+        p = Proposal.objects.get(multisig_address=state_multisig_address)
         private_key = Keystore.objects.get(public_key=p.public_key).private_key
 
         signature = multisign(tx, input_index, script, private_key)

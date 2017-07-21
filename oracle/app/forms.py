@@ -10,7 +10,8 @@ class SignForm(forms.Form):
     script = forms.CharField(required=True)
     input_index = forms.IntegerField(required=True)
     sender_address = forms.CharField(required=True)
-    multisig_address = forms.CharField(required=True)
+    state_multisig_address = forms.CharField(required=True)
+    contract_address = forms.CharField(required=False)
     color = forms.CharField(required=True)
     amount = forms.IntegerField(required=True)
 
