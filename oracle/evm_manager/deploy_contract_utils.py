@@ -9,17 +9,8 @@ from .decorators import retry, write_lock
 from .models import StateInfo
 import logging
 from .exceptions import TxNotFoundError, DoubleSpendingError, UnsupportedTxTypeError, TxUnconfirmedError
-try:
-    from events import state_log_utils
-    from .contract_server_utils import set_contract_address, unset_all_contract_addresses
-    IN_CONTRACT_SERVER = True
-except:
-    IN_CONTRACT_SERVER = False
-try:
-    from .oracle_server_utils import deploy_new_contract
-    IN_ORACLE_SERVER = True
-except:
-    IN_ORACLE_SERVER = False
+
+IN_ORACLE_SERVER = True
 
 THIS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 CONTRACT_PATH_FORMAT = THIS_FILE_PATH + '/../states/{multisig_address}'
