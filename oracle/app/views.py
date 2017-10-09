@@ -144,7 +144,7 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
         return response_utils.error_response(httplib.BAD_REQUEST, response)
 
 
-class SignNew(CsrfExemptMixin, BaseFormView):
+class Sign(CsrfExemptMixin, BaseFormView):
     http_method_name = ['post']
     form_class = SignForm
 

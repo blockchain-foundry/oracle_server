@@ -9,6 +9,7 @@ from .decorators import retry, write_lock
 from .models import StateInfo
 import logging
 from .exceptions import TxNotFoundError, DoubleSpendingError, UnsupportedTxTypeError, TxUnconfirmedError
+from .oracle_server_utils import deploy_new_contract
 
 IN_ORACLE_SERVER = True
 
@@ -50,9 +51,6 @@ def deploy_contracts(tx_hash, rebuild=False):
         logger.info(str(i + 1) + '/' + str(len(txs)) +
                     ' updating tx: ' + tx['type'] + ' ' + tx['hash'])
         deploy_single_tx(tx, latest_tx_hash, state_multisig_address)
-        if tx['type'] == 'CONTRACT':
-            if IN_CONTRACT_SERVER:
-                state_log_utils.check_watch(tx['hash'], state_multisig_address)
         latest_tx_hash = tx['hash']
 
     logger.info('Finish: The latest updated tx is ' + (latest_tx_hash or 'None'))
@@ -90,10 +88,7 @@ def write_state_contract_type(tx_info, ex_tx_hash, multisig_address, sender_addr
     if is_deploy:
         check_call(command, shell=True)
         inc_nonce(multisig_address, sender_address)
-        if IN_ORACLE_SERVER:
-            deploy_new_contract(multisig_address, contract_address, sender_address, tx_info)
-        if IN_CONTRACT_SERVER:
-            set_contract_address(multisig_address, contract_address, sender_address, tx_info)
+        deploy_new_contract(multisig_address, contract_address, sender_address, tx_info)
     else:
         check_call(command, shell=True)
         inc_nonce(multisig_address, sender_address)
@@ -305,5 +300,3 @@ def rebuild_state_file(multisig_address):
     state.latest_tx_hash = ''
     state.latest_tx_time = ''
     state.save()
-    if IN_CONTRACT_SERVER:
-        unset_all_contract_addresses(multisig_address)

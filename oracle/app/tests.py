@@ -9,12 +9,14 @@ from django.test import TestCase
 
 from app.models import Proposal
 
+API_VERSION = '/api/v1'
+
 
 class ProposeTest(TestCase):
 
     def setUp(self):
         super(ProposeTest, self).setUp()
-        self.url = '/proposals/'
+        self.url = API_VERSION + '/proposals/'
 
     def test_proposal_without_multisig(self):
         response = self.client.get(self.url)
@@ -43,10 +45,10 @@ class MultisigAddrTest(TestCase):
 
     def setUp(self):
         super(MultisigAddrTest, self).setUp()
-        self.url = '/multisigaddress/'
+        self.url = API_VERSION + '/multisigaddress/'
 
         # gen a new keystore
-        response = self.client.get('/proposals/')
+        response = self.client.get(API_VERSION + '/proposals/')
         data = json.loads(response.content.decode('utf-8'))
         test_public_key = data.get('public_key')
 
@@ -97,12 +99,12 @@ class MultisigAddrTest(TestCase):
 class AddressNotifiedCase(TestCase):
 
     def setUp(self):
-        self.url = "/addressnotify/339AXdNwaL8FJ3Pw8mkwbnJnY8CetBbUP4"
+        self.url = API_VERSION + '/addressnotify/339AXdNwaL8FJ3Pw8mkwbnJnY8CetBbUP4'
 
         self.sample_form = {
-            "tx_hash": "1GmuEC3KHQgqtyT1oDceyxmD4RNtRsPRwq",
-            "subscription_id": '1',
-            "notification_id": '2'
+            'tx_hash': '1GmuEC3KHQgqtyT1oDceyxmD4RNtRsPRwq',
+            'subscription_id': '1',
+            'notification_id': '2'
         }
 
     def fake_deploy_contracts(tx_hash):
@@ -115,7 +117,7 @@ class AddressNotifiedCase(TestCase):
         self.response = self.client.post(self.url, {})
         self.assertEqual(self.response.status_code, httplib.NOT_ACCEPTABLE)
 
-    @mock.patch("evm_manager.deploy_contract_utils.deploy_contracts", fake_deploy_contracts)
+    @mock.patch('evm_manager.deploy_contract_utils.deploy_contracts', fake_deploy_contracts)
     def test_address_notified(self):
         self.response = self.client.post(self.url, self.sample_form)
         self.assertEqual(self.response.status_code, httplib.OK)

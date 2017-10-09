@@ -49,6 +49,9 @@ class OraclizeContract(models.Model):
 
 
 class Proposal(models.Model):
+    """
+    Record the relationship with multisig address and public key.
+    """
     public_key = models.CharField(max_length=200)
     multisig_address = models.CharField(max_length=100, blank=True, unique=True)
     created = models.DateTimeField(auto_now_add=True)
