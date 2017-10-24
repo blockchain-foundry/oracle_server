@@ -120,8 +120,6 @@ class Multisig_addr(CsrfExemptMixin, BaseFormView):
         try:
             p, _ = Proposal.objects.get_or_create(
                 public_key=pubkey, multisig_address=multisig_address, is_state_multisig=is_state_multisig)
-            if is_state_multisig:
-                deploy_contract_utils.make_multisig_address_file(multisig_address)
         except Proposal.DoesNotExist:
             return response_utils.error_response(httplib.BAD_REQUEST, "Cannot find proposal with this pubkey.")
         except Exception as e:
@@ -167,7 +165,8 @@ class Sign(CsrfExemptMixin, BaseFormView):
         decoded_tx = deserialize(tx)
         try:
             old_utxo, all_utxos = self.get_oldest_utxo(state_multisig_address)
-            deploy_contract_utils.deploy_contracts(old_utxo[0])
+            updater = ContractStateFileUpdater(state_multisig_address)
+            updater.update_until_tx(old_utxo[0])
         except:
             response = {'error': 'Do not contain oldest tx'}
             return JsonResponse(response, status=httplib.NOT_FOUND)
@@ -349,7 +348,7 @@ class AddressNotified(View):
             status: State-Update is failed or completed
         """
         multisig_address = self.kwargs['multisig_address']
-        form = NotifyForm(request.data)
+        form = NotifyForm(request.POST)
         tx_hash = ""
 
         if form.is_valid():
