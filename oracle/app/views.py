@@ -167,7 +167,7 @@ class Sign(CsrfExemptMixin, BaseFormView):
             old_utxo, all_utxos = self.get_oldest_utxo(state_multisig_address)
             updater = ContractStateFileUpdater(state_multisig_address)
             updater.update_until_tx(old_utxo[0])
-        except:
+        except Exception:
             response = {'error': 'Do not contain oldest tx'}
             return JsonResponse(response, status=httplib.NOT_FOUND)
         contained_old = False
@@ -245,7 +245,7 @@ class Sign(CsrfExemptMixin, BaseFormView):
                 if block_time is None or int(block['time']) < block_time:
                     old_utxo = utxo
                     block_time = int(block['time'])
-            except:
+            except Exception:
                 print('unconfirmed')
 
         old_utxo = (old_utxo['txid'], old_utxo['vout'])
@@ -264,7 +264,7 @@ class GetBalance(ProcessFormView):
                 amount = account['balance']
                 response = amount
                 return JsonResponse(response, status=httplib.OK)
-        except:
+        except Exception:
             response = {}
             return JsonResponse(response, status=httplib.OK)
 
@@ -280,7 +280,7 @@ class GetStorage(View):
                 storage = account['storage']
                 response = storage
                 return JsonResponse(response, status=httplib.OK)
-        except:
+        except Exception:
             response = {}
             return JsonResponse(response, status=httplib.OK)
 
@@ -296,7 +296,7 @@ class DumpContractState(View):
                 content = json.load(f)
                 response = content
                 return JsonResponse(response, status=httplib.OK)
-        except:
+        except Exception:
             response = {}
             return JsonResponse(response, status=httplib.OK)
 
@@ -313,7 +313,7 @@ class CheckContractCode(View):
                 code = account['code']
                 response = {'code': code}
                 return JsonResponse(response, status=httplib.OK)
-        except:
+        except Exception:
             response = {'status': 'Contract code not found'}
             return JsonResponse(response, status=status.HTTP_400_BAD_REQUEST)
 

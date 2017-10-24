@@ -14,7 +14,12 @@ DATABASES = {
     }
 }
 
-5. 
-$ cd ./oracle
+5. 增加smart contract submodule:
+
+$ git submodule init
+$ git submodule update
+
+6.
+$ cd <ORACLE_PATH>/oracle
 $ ./manage.py migrate
 $ ./manage.py runserver 0.0.0.0:(port_num)
