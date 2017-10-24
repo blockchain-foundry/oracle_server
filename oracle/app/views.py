@@ -3,24 +3,26 @@ import binascii
 import hashlib
 import json
 import re
+import threading
 
 from gcoin import multisign, deserialize, ripemd
 
 from django.http import JsonResponse
+from django.views.generic import View
 from django.views.generic.edit import BaseFormView, ProcessFormView
 from django.conf import settings
 
 from rest_framework import status
-from rest_framework.views import APIView
+from app import response_utils
 from app.models import Keystore, OraclizeContract, Proposal
-from evm_manager import deploy_contract_utils
-from evm_manager.utils import wallet_address_to_evm
-from .forms import MultisigAddrFrom, SignForm, NotifyForm
+from smart_contract_utils.ContractStateFileUpdater import ContractStateFileUpdater
+from smart_contract_utils.ContractTxInfo import ContractTxInfo
+from smart_contract_utils.models import StateInfo
+from smart_contract_utils.utils import wallet_address_to_evm
 from oracle.mixins import CsrfExemptMixin
 from gcoinbackend import core as gcoincore
-from app import response_utils
 
-import threading
+from .forms import MultisigAddrFrom, SignForm, NotifyForm
 
 pubkey_hash_re = re.compile(r'^76a914[a-f0-9]{40}88ac$')
 pubkey_re = re.compile(r'^21[a-f0-9]{66}ac$')
@@ -67,7 +69,12 @@ def get_callback_url(request, multisig_address):
 
 def evm_deploy(tx_hash):
     print('Deploy tx_hash ' + tx_hash)
-    completed = deploy_contract_utils.deploy_contracts(tx_hash)
+    # parse tx
+    contract_tx_info = ContractTxInfo(tx_hash)
+    state_multisig_address = contract_tx_info.get_state_multisig_address()
+    # update tx into corresponding state file
+    state_info, _ = StateInfo.objects.get_or_create(multisig_address=state_multisig_address)
+    completed = state_info.update_with_tx_hash(tx_hash)
 
     if completed:
         print('Deployed Success')
@@ -263,7 +270,7 @@ class GetBalance(ProcessFormView):
             return JsonResponse(response, status=httplib.OK)
 
 
-class GetStorage(APIView):
+class GetStorage(View):
 
     def get(self, request, multisig_address):
         contract_evm_address = wallet_address_to_evm(multisig_address)
@@ -279,7 +286,7 @@ class GetStorage(APIView):
             return JsonResponse(response, status=httplib.OK)
 
 
-class DumpContractState(APIView):
+class DumpContractState(View):
     """
     Get contract state file
     """
@@ -295,7 +302,7 @@ class DumpContractState(APIView):
             return JsonResponse(response, status=httplib.OK)
 
 
-class CheckContractCode(APIView):
+class CheckContractCode(View):
     http_method_name = ['get']
 
     def get(self, request, multisig_address):
@@ -317,7 +324,9 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
 
     def post(self, request, *args, **kwargs):
         tx_hash = self.kwargs['tx_hash']
-        response = {"message": 'Received notify with tx_hash ' + tx_hash}
+        response = {
+            "message": 'Received notify with tx_hash ' + tx_hash
+        }
         print('Received notify with tx_hash ' + tx_hash)
 
         t = threading.Thread(target=evm_deploy, args=[tx_hash, ])
@@ -325,7 +334,7 @@ class NewTxNotified(CsrfExemptMixin, ProcessFormView):
         return JsonResponse(response, status=httplib.OK)
 
 
-class AddressNotified(APIView):
+class AddressNotified(View):
 
     def post(self, request, *args, **kwargs):
         """ Receive Address Notification From OSS
@@ -356,7 +365,7 @@ class AddressNotified(APIView):
         return JsonResponse(response, status=httplib.OK)
 
 
-class OraclizeContractInterface(APIView):
+class OraclizeContractInterface(View):
 
     def get(self, request, contract_name):
         response = {}

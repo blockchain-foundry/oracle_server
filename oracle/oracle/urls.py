@@ -18,7 +18,7 @@ from rest_framework.urlpatterns import format_suffix_patterns
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^states/', include('evm_manager.urls', namespace='evm_manager')),
+    url(r'^states/', include('smart_contract_utils.urls', namespace='smart_contract_utils')),
     url(r'^api/v1/?', include('app.urls')),
 ]
 
