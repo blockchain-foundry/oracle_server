@@ -45,6 +45,15 @@ DATABASES = {
     }
 }
 
+# For testing env, you may just need sqlite
+"""
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
+}
+"""
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.10/howto/deployment/checklist/
@@ -67,8 +76,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'evm_manager',
     'app',
+    'smart_contract_utils',
 ]
 
 MIDDLEWARE_CLASSES = [
