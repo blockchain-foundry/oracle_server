@@ -1,11 +1,11 @@
 # Oracle Server
 
-0. 請用python3
-1. 架設python virtualenv(請先忽略./setup_venv.sh，有些小問題待修復)
-2. 切到 virtualenv 中，安裝 requirements.txt 中的套件。
+0. python3 is required.
+1. Build python virtualenv. (Don't use ./setup_venv.sh now, there are some bugs to be solved.)
+2. Launch virtual env, and install all dependency in requirements.txt.
 	$ pip install -r requirements.txt
-3. 修改./oracle/.env.default，設定完後另存為./oracle/.env
-4. 如測試用，可以將./oracle/settings/base.py 中的 DB 設定成 sqlite。改為以下：
+3. Copy and modify ./oracle/.env.default, and store as a new file with this path: ./oracle/.env.
+4. If the built is just for testint, you can just use sqlite rather than MYSQL. Modify DB settings in ./oracle/settings/base.py as below:
 
 DATABASES = {
     'default': {
@@ -14,12 +14,16 @@ DATABASES = {
     }
 }
 
-5. 增加smart contract submodule:
+5. Get all submodules in this repo.
 
 $ git submodule init
+
 $ git submodule update
 
-6.
+6. Migrate DB and run server.
+
 $ cd <ORACLE_PATH>/oracle
+
 $ ./manage.py migrate
+
 $ ./manage.py runserver 0.0.0.0:(port_num)
